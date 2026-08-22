@@ -96,10 +96,24 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import com.irblaster.app.model.IrSignal
+import com.irblaster.app.ui.components.IrBlastParticleOverlay
 import com.irblaster.app.ui.components.IrTimingGraph
 import com.irblaster.app.ui.components.IrWaterfallGraph
 import com.irblaster.app.ui.components.IrWaveformGraph
+import com.irblaster.app.ui.components.SonarRadarVisualizer
+import com.irblaster.app.ui.components.shimmerBorder
+import com.irblaster.app.ui.components.springBounceClickable
 import com.irblaster.app.ui.theme.CardSurface
 import com.irblaster.app.ui.theme.DeepBackground
 import com.irblaster.app.ui.theme.NeonAmber
@@ -128,104 +142,118 @@ fun MainScreen(
     var showSaveDialog by remember { mutableStateOf(false) }
     var saveSignalName by remember { mutableStateOf("") }
 
-    Scaffold(
-        containerColor = DeepBackground
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp)
-        ) {
-            Spacer(modifier = Modifier.height(10.dp))
-
-            // ---------------------------------------------------------
-            // 1. CONNECTION HEADER
-            // ---------------------------------------------------------
-            ConnectionHeader(
-                connectionState = uiState.connectionState,
-                statusBanner = uiState.statusBanner,
-                isListening = uiState.isListening,
-                isTransmitting = uiState.isTransmitting,
-                onRequestPermission = onRequestPermission
-            )
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // ---------------------------------------------------------
-            // NAVIGATION TABS
-            // ---------------------------------------------------------
-            val tabs = listOf("Clone / Listen", "Transmit & Presets")
-            TabRow(
-                selectedTabIndex = selectedTab,
-                containerColor = SurfaceVariant,
-                contentColor = VioletLight,
-                indicator = { tabPositions ->
-                    TabRowDefaults.SecondaryIndicator(
-                        modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                        color = VioletPrimary,
-                        height = 3.dp
-                    )
-                },
-                modifier = Modifier.clip(RoundedCornerShape(12.dp))
-            ) {
-                tabs.forEachIndexed { index, title ->
-                    Tab(
-                        selected = selectedTab == index,
-                        onClick = { selectedTab = index },
-                        text = {
-                            Text(
-                                title,
-                                fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                                color = if (selectedTab == index) VioletLight else TextSecondary,
-                                fontSize = 13.sp
-                            )
-                        },
-                        icon = {
-                            Icon(
-                                imageVector = if (index == 0) Icons.Filled.Hearing else Icons.AutoMirrored.Filled.Send,
-                                contentDescription = title,
-                                tint = if (selectedTab == index) VioletLight else TextMuted,
-                                modifier = Modifier.size(20.dp)
-                            )
-                        }
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // ---------------------------------------------------------
-            // MAIN TAB CONTENT
-            // ---------------------------------------------------------
-            Box(
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            containerColor = DeepBackground
+        ) { padding ->
+            Column(
                 modifier = Modifier
-                    .weight(1f)
-                    .fillMaxWidth()
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp)
             ) {
-                when (selectedTab) {
-                    0 -> CloneListenTab(
-                        isConnected = uiState.connectionState is ConnectionState.Connected,
-                        isListening = uiState.isListening,
-                        lastCapturedSignal = uiState.lastCapturedSignal,
-                        onToggleListen = { viewModel.toggleListen() },
-                        onReplaySignal = { signal -> viewModel.transmitSignal(signal) },
-                        onOpenSaveDialog = {
-                            saveSignalName = uiState.lastCapturedSignal?.name ?: ""
-                            showSaveDialog = true
-                        }
-                    )
-                    1 -> TransmitTab(
-                        isConnected = uiState.connectionState is ConnectionState.Connected,
-                        isTransmitting = uiState.isTransmitting,
-                        signals = uiState.capturedSignals,
-                        lastCapturedSignal = uiState.lastCapturedSignal,
-                        onTransmitSignal = { viewModel.transmitSignal(it) },
-                        onTransmitRaw = { freq, raw -> viewModel.transmitRaw(freq, raw) },
-                        onDeleteSignal = { viewModel.deleteSignal(it) }
-                    )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // ---------------------------------------------------------
+                // 1. CONNECTION HEADER
+                // ---------------------------------------------------------
+                ConnectionHeader(
+                    connectionState = uiState.connectionState,
+                    statusBanner = uiState.statusBanner,
+                    isListening = uiState.isListening,
+                    isTransmitting = uiState.isTransmitting,
+                    onRequestPermission = onRequestPermission
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ---------------------------------------------------------
+                // NAVIGATION TABS
+                // ---------------------------------------------------------
+                val tabs = listOf("Clone / Listen", "Transmit & Presets")
+                TabRow(
+                    selectedTabIndex = selectedTab,
+                    containerColor = SurfaceVariant,
+                    contentColor = VioletLight,
+                    indicator = { tabPositions ->
+                        TabRowDefaults.SecondaryIndicator(
+                            modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
+                            color = VioletPrimary,
+                            height = 3.dp
+                        )
+                    },
+                    modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                ) {
+                    tabs.forEachIndexed { index, title ->
+                        Tab(
+                            selected = selectedTab == index,
+                            onClick = { selectedTab = index },
+                            text = {
+                                Text(
+                                    title,
+                                    fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (selectedTab == index) VioletLight else TextSecondary,
+                                    fontSize = 13.sp
+                                )
+                            },
+                            icon = {
+                                Icon(
+                                    imageVector = if (index == 0) Icons.Filled.Hearing else Icons.AutoMirrored.Filled.Send,
+                                    contentDescription = title,
+                                    tint = if (selectedTab == index) VioletLight else TextMuted,
+                                    modifier = Modifier.size(20.dp)
+                                )
+                            }
+                        )
+                    }
                 }
-            }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // ---------------------------------------------------------
+                // MAIN TAB CONTENT (Smooth Animated Tab Transitions)
+                // ---------------------------------------------------------
+                AnimatedContent(
+                    targetState = selectedTab,
+                    transitionSpec = {
+                        if (targetState > initialState) {
+                            (slideInHorizontally { width -> width } + fadeIn(tween(300))).togetherWith(
+                                slideOutHorizontally { width -> -width } + fadeOut(tween(200))
+                            )
+                        } else {
+                            (slideInHorizontally { width -> -width } + fadeIn(tween(300))).togetherWith(
+                                slideOutHorizontally { width -> width } + fadeOut(tween(200))
+                            )
+                        }.using(SizeTransform(clip = false))
+                    },
+                    label = "tabTransition",
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) { tabIndex ->
+                    when (tabIndex) {
+                        0 -> CloneListenTab(
+                            isConnected = uiState.connectionState is ConnectionState.Connected,
+                            isListening = uiState.isListening,
+                            lastCapturedSignal = uiState.lastCapturedSignal,
+                            onToggleListen = { viewModel.toggleListen() },
+                            onReplaySignal = { signal -> viewModel.transmitSignal(signal) },
+                            onOpenSaveDialog = {
+                                saveSignalName = uiState.lastCapturedSignal?.name ?: ""
+                                showSaveDialog = true
+                            }
+                        )
+                        1 -> TransmitTab(
+                            isConnected = uiState.connectionState is ConnectionState.Connected,
+                            isTransmitting = uiState.isTransmitting,
+                            signals = uiState.capturedSignals,
+                            lastCapturedSignal = uiState.lastCapturedSignal,
+                            onTransmitSignal = { viewModel.transmitSignal(it) },
+                            onTransmitRaw = { freq, raw -> viewModel.transmitRaw(freq, raw) },
+                            onDeleteSignal = { viewModel.deleteSignal(it) }
+                        )
+                    }
+                }
 
             // ---------------------------------------------------------
             // 4. REAL-TIME DEBUG CONSOLE
@@ -287,6 +315,10 @@ fun MainScreen(
                 }
             }
         )
+    }
+
+        // Global IR Photon Blast Laser Animation Overlay
+        IrBlastParticleOverlay(isTransmitting = uiState.isTransmitting)
     }
 }
 
@@ -524,14 +556,19 @@ fun CloneListenTab(
                 disabledContainerColor = SurfaceVariant
             )
         ) {
-            Icon(
-                imageVector = if (isListening) Icons.Filled.Stop else Icons.Filled.Hearing,
-                contentDescription = null,
-                modifier = Modifier.size(24.dp)
-            )
-            Spacer(modifier = Modifier.width(10.dp))
+            if (isListening) {
+                SonarRadarVisualizer(isListening = true, modifier = Modifier.size(28.dp))
+                Spacer(modifier = Modifier.width(10.dp))
+            } else {
+                Icon(
+                    imageVector = Icons.Filled.Hearing,
+                    contentDescription = null,
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(modifier = Modifier.width(10.dp))
+            }
             Text(
-                text = if (isListening) "Stop Listening" else "Start Listening / Learn Mode",
+                text = if (isListening) "Stop Listening (Receiver Active)" else "Start Listening / Learn Mode",
                 fontWeight = FontWeight.Bold,
                 fontSize = 16.sp
             )
@@ -550,11 +587,12 @@ fun CloneListenTab(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // 2. Captured Signal Details & Actions Card
+        // 2. Captured Signal Details & Actions Card (with animated Shimmer Border)
         ElevatedCard(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.9f),
+                .weight(0.9f)
+                .shimmerBorder(enabled = lastCapturedSignal != null),
             shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.elevatedCardColors(containerColor = CardSurface)
         ) {
@@ -907,13 +945,21 @@ fun TransmitTab(
 }
 
 @Composable
-fun PresetButton(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, color: Color, enabled: Boolean, onClick: () -> Unit) {
+fun PresetButton(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    color: Color,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
     FilledTonalButton(
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(10.dp),
+        shape = RoundedCornerShape(12.dp),
+        modifier = Modifier.springBounceClickable(scaleDown = 0.88f, onClick = { if (enabled) onClick() }),
+        border = androidx.compose.foundation.BorderStroke(1.dp, color.copy(alpha = 0.4f)),
         colors = ButtonDefaults.filledTonalButtonColors(
-            containerColor = color.copy(alpha = 0.15f),
+            containerColor = color.copy(alpha = 0.18f),
             contentColor = color
         )
     ) {
