@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">IR Blaster</string>
+    <string name="status_disconnected">USB Disconnected</string>
+    <string name="status_connecting">Connecting…</string>
+    <string name="status_connected">USB Connected</string>
+    <string name="status_listening">Listening for IR…</string>
+    <string name="status_transmitting">Transmitting…</string>
+    <string name="status_error">Error</string>
+    <string name="btn_listen">Listen Mode</string>
+    <string name="btn_stop_listen">Stop Listening</string>
+    <string name="btn_transmit">Transmit</string>
+    <string name="btn_clear_log">Clear Log</string>
+    <string name="tab_listen">Listen</string>
+    <string name="tab_transmit">Transmit</string>
+    <string name="label_frequency">Frequency (Hz)</string>
+    <string name="label_timings">Raw Timings</string>
+    <string name="label_debug_log">Debug Log</string>
+    <string name="label_no_signals">No captured signals yet</string>
+    <string name="label_no_device">No USB IR device detected</string>
+    <string name="hint_signal_name">Signal name</string>
+    <string name="msg_permission_denied">USB permission denied</string>
+    <string name="msg_handshake_ok">Handshake successful</string>
+    <string name="msg_handshake_fail">Handshake failed</string>
+    <string name="msg_tx_ok">Signal transmitted</string>
+    <string name="msg_tx_fail">Transmit failed</string>
+    <string name="msg_hardware_note">Note: If your dongle is TX-only (single LED, no photodiode), Listen Mode will not receive data.</string>
+</resources>

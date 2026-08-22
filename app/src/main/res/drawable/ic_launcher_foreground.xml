@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- IR signal rays -->
+    <path
+        android:fillColor="#B388FF"
+        android:pathData="M54,38 L58,30 L50,30 Z" />
+    <path
+        android:fillColor="#B388FF"
+        android:pathData="M40,44 L34,38 L36,46 Z" />
+    <path
+        android:fillColor="#B388FF"
+        android:pathData="M68,44 L74,38 L72,46 Z" />
+
+    <!-- IR emitter body -->
+    <path
+        android:fillColor="#7C4DFF"
+        android:pathData="M46,48 C46,44 62,44 62,48 L62,72 C62,76 46,76 46,72 Z" />
+
+    <!-- LED tip glow -->
+    <path
+        android:fillColor="#E8DEF8"
+        android:pathData="M50,44 C50,42 58,42 58,44 C58,46 50,46 50,44 Z" />
+
+    <!-- USB connector -->
+    <path
+        android:fillColor="#9E9EB8"
+        android:pathData="M48,72 L48,80 L60,80 L60,72 Z" />
+    <path
+        android:fillColor="#6B6B85"
+        android:pathData="M50,76 L50,80 L52,80 L52,76 Z" />
+    <path
+        android:fillColor="#6B6B85"
+        android:pathData="M56,76 L56,80 L58,80 L58,76 Z" />
+</vector>

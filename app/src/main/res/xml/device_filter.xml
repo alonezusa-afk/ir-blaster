@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Getzget 7th Gen / Ocrustar / ZaZa / ElkSmart Custom USB IR Dongles (VID: 0x045C = 1116) -->
+    <usb-device vendor-id="1116" product-id="308" />  <!-- 0x045C : 0x0134 -->
+    <usb-device vendor-id="1116" product-id="682" />  <!-- 0x045C : 0x02AA -->
+
+    <!-- Tiqiaa / Tview USB IR (VID: 0x10C4 = 4292, PID: 0x8468 = 33896) -->
+    <usb-device vendor-id="4292" product-id="33896" />
+
+    <!-- Silicon Labs CP210x USB to UART Bridge (VID: 0x10C4 = 4292, PID: 0xEA60 = 60000) -->
+    <usb-device vendor-id="4292" product-id="60000" />
+
+    <!-- WCH CH340 / CH341 USB to Serial (VID: 0x1A86 = 6790, PID: 0x7523 = 29987) -->
+    <usb-device vendor-id="6790" product-id="29987" />
+    <usb-device vendor-id="6790" product-id="21795" /> <!-- CH340G 0x5523 -->
+
+    <!-- FTDI FT232R USB UART (VID: 0x0403 = 1027, PID: 0x6001 = 24577) -->
+    <usb-device vendor-id="1027" product-id="24577" />
+
+    <!-- Prolific PL2303 USB Serial (VID: 0x067B = 1659, PID: 0x2303 = 8963) -->
+    <usb-device vendor-id="1659" product-id="8963" />
+</resources>
