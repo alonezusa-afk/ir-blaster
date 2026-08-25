@@ -14,6 +14,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.lifecycle.lifecycleScope
 import com.irblaster.app.ui.screens.MainScreen
 import com.irblaster.app.ui.theme.IrBlasterTheme
@@ -80,7 +82,7 @@ class MainActivity : ComponentActivity() {
 
                 UsbManager.ACTION_USB_DEVICE_DETACHED -> {
                     Log.d(TAG, "USB Device Detached")
-                    viewModel.onUsbDetached()
+                    viewModel.onUsbDeviceDetached()
                 }
             }
         }
@@ -114,7 +116,11 @@ class MainActivity : ComponentActivity() {
         handleIntent(intent)
 
         setContent {
-            IrBlasterTheme {
+            val uiState by viewModel.uiState.collectAsState()
+            IrBlasterTheme(
+                palette = uiState.activeTheme,
+                isAmoledMode = uiState.isAmoledMode
+            ) {
                 MainScreen(
                     viewModel = viewModel,
                     onRequestPermission = {

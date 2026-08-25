@@ -1,6 +1,8 @@
 package com.irblaster.app.ui.screens
 
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -13,8 +15,9 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -38,23 +41,21 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.automirrored.filled.VolumeDown
-import androidx.compose.material.icons.automirrored.filled.VolumeMute
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.BookmarkAdd
-import androidx.compose.material.icons.filled.BugReport
-import androidx.compose.material.icons.filled.ClearAll
+import androidx.compose.material.icons.filled.Cable
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Replay
-import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.SettingsRemote
 import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material.icons.filled.Usb
-import androidx.compose.material.icons.filled.UsbOff
+import androidx.compose.material.icons.filled.Tv
+import androidx.compose.material.icons.filled.VolumeOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -89,6 +90,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -96,38 +98,25 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.togetherWith
 import com.irblaster.app.model.IrSignal
 import com.irblaster.app.ui.components.IrBlastParticleOverlay
 import com.irblaster.app.ui.components.IrTimingGraph
-import com.irblaster.app.ui.components.IrWaterfallGraph
-import com.irblaster.app.ui.components.IrWaveformGraph
 import com.irblaster.app.ui.components.SonarRadarVisualizer
+import com.irblaster.app.usb.IrProtocolHelper
 import com.irblaster.app.ui.components.shimmerBorder
 import com.irblaster.app.ui.components.springBounceClickable
+import com.irblaster.app.ui.theme.AppThemePalette
 import com.irblaster.app.ui.theme.CardSurface
-import com.irblaster.app.ui.theme.DeepBackground
+import com.irblaster.app.ui.theme.LiquidAmbientBackground
 import com.irblaster.app.ui.theme.NeonAmber
 import com.irblaster.app.ui.theme.NeonCyan
 import com.irblaster.app.ui.theme.NeonGreen
 import com.irblaster.app.ui.theme.NeonRed
-import com.irblaster.app.ui.theme.SurfaceDark
 import com.irblaster.app.ui.theme.SurfaceVariant
 import com.irblaster.app.ui.theme.TextMuted
 import com.irblaster.app.ui.theme.TextPrimary
 import com.irblaster.app.ui.theme.TextSecondary
-import com.irblaster.app.ui.theme.VioletDark
-import com.irblaster.app.ui.theme.VioletLight
-import com.irblaster.app.ui.theme.VioletPrimary
+import com.irblaster.app.ui.theme.liquidGlass
 import com.irblaster.app.viewmodel.ConnectionState
 import com.irblaster.app.viewmodel.MainViewModel
 
@@ -137,54 +126,70 @@ fun MainScreen(
     onRequestPermission: () -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val theme = uiState.activeTheme
     var selectedTab by remember { mutableIntStateOf(0) }
     var isDebugConsoleExpanded by remember { mutableStateOf(false) }
     var showSaveDialog by remember { mutableStateOf(false) }
     var saveSignalName by remember { mutableStateOf("") }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    LiquidAmbientBackground(
+        theme = theme,
+        isAmoledMode = uiState.isAmoledMode,
+        modifier = Modifier.fillMaxSize()
+    ) {
         Scaffold(
-            containerColor = DeepBackground
+            containerColor = Color.Transparent
         ) { padding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 16.dp)
+                    .padding(horizontal = 14.dp)
             ) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // ---------------------------------------------------------
-                // 1. CONNECTION HEADER
+                // 1. LIQUID GLASS CONNECTION HEADER
                 // ---------------------------------------------------------
                 ConnectionHeader(
                     connectionState = uiState.connectionState,
+                    theme = theme,
                     statusBanner = uiState.statusBanner,
                     isListening = uiState.isListening,
                     isTransmitting = uiState.isTransmitting,
                     onRequestPermission = onRequestPermission
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // ---------------------------------------------------------
-                // NAVIGATION TABS
+                // NAVIGATION TABS (3 Tabs: Clone/Listen, Transmit, Settings)
                 // ---------------------------------------------------------
-                val tabs = listOf("Clone / Listen", "Transmit & Presets")
+                val tabs = listOf(
+                    Triple("Clone & Learn", Icons.Filled.Hearing, 0),
+                    Triple("Transmit & Remote", Icons.AutoMirrored.Filled.Send, 1),
+                    Triple("Settings & Themes", Icons.Filled.Tune, 2)
+                )
+
                 TabRow(
                     selectedTabIndex = selectedTab,
-                    containerColor = SurfaceVariant,
-                    contentColor = VioletLight,
+                    containerColor = Color.Transparent,
+                    contentColor = theme.primaryAccent,
                     indicator = { tabPositions ->
                         TabRowDefaults.SecondaryIndicator(
                             modifier = Modifier.tabIndicatorOffset(tabPositions[selectedTab]),
-                            color = VioletPrimary,
+                            color = theme.primaryAccent,
                             height = 3.dp
                         )
                     },
-                    modifier = Modifier.clip(RoundedCornerShape(12.dp))
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(14.dp))
+                        .liquidGlass(
+                            backgroundColor = theme.cardSurface,
+                            borderGradient = listOf(theme.primaryAccent.copy(alpha = 0.3f), Color.Transparent, theme.secondaryAccent.copy(alpha = 0.3f))
+                        )
                 ) {
-                    tabs.forEachIndexed { index, title ->
+                    tabs.forEachIndexed { index, (title, icon, _) ->
                         Tab(
                             selected = selectedTab == index,
                             onClick = { selectedTab = index },
@@ -192,37 +197,39 @@ fun MainScreen(
                                 Text(
                                     title,
                                     fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (selectedTab == index) VioletLight else TextSecondary,
-                                    fontSize = 13.sp
+                                    color = if (selectedTab == index) theme.primaryAccent else TextSecondary,
+                                    fontSize = 12.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
                                 )
                             },
                             icon = {
                                 Icon(
-                                    imageVector = if (index == 0) Icons.Filled.Hearing else Icons.AutoMirrored.Filled.Send,
+                                    imageVector = icon,
                                     contentDescription = title,
-                                    tint = if (selectedTab == index) VioletLight else TextMuted,
-                                    modifier = Modifier.size(20.dp)
+                                    tint = if (selectedTab == index) theme.primaryAccent else TextMuted,
+                                    modifier = Modifier.size(18.dp)
                                 )
                             }
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
 
                 // ---------------------------------------------------------
-                // MAIN TAB CONTENT (Smooth Animated Tab Transitions)
+                // MAIN TAB CONTENT (Smooth Animated Transitions)
                 // ---------------------------------------------------------
                 AnimatedContent(
                     targetState = selectedTab,
                     transitionSpec = {
                         if (targetState > initialState) {
-                            (slideInHorizontally { width -> width } + fadeIn(tween(300))).togetherWith(
-                                slideOutHorizontally { width -> -width } + fadeOut(tween(200))
+                            (slideInHorizontally { width -> width } + fadeIn(tween(280))).togetherWith(
+                                slideOutHorizontally { width -> -width } + fadeOut(tween(180))
                             )
                         } else {
-                            (slideInHorizontally { width -> -width } + fadeIn(tween(300))).togetherWith(
-                                slideOutHorizontally { width -> width } + fadeOut(tween(200))
+                            (slideInHorizontally { width -> -width } + fadeIn(tween(280))).togetherWith(
+                                slideOutHorizontally { width -> width } + fadeOut(tween(180))
                             )
                         }.using(SizeTransform(clip = false))
                     },
@@ -236,6 +243,7 @@ fun MainScreen(
                             isConnected = uiState.connectionState is ConnectionState.Connected,
                             isListening = uiState.isListening,
                             lastCapturedSignal = uiState.lastCapturedSignal,
+                            theme = theme,
                             onToggleListen = { viewModel.toggleListen() },
                             onReplaySignal = { signal -> viewModel.transmitSignal(signal) },
                             onOpenSaveDialog = {
@@ -248,86 +256,98 @@ fun MainScreen(
                             isTransmitting = uiState.isTransmitting,
                             signals = uiState.capturedSignals,
                             lastCapturedSignal = uiState.lastCapturedSignal,
+                            theme = theme,
                             onTransmitSignal = { viewModel.transmitSignal(it) },
                             onTransmitRaw = { freq, raw -> viewModel.transmitRaw(freq, raw) },
                             onDeleteSignal = { viewModel.deleteSignal(it) }
                         )
+                        2 -> SettingsTab(
+                            uiState = uiState,
+                            onSelectTheme = { viewModel.setTheme(it) },
+                            onToggleAmoled = { viewModel.setAmoledMode(it) },
+                            onToggleHaptics = { viewModel.setHaptics(it) },
+                            onToggleParticleBlast = { viewModel.setParticleBlast(it) },
+                            onSelectCarrierFreq = { viewModel.setDefaultCarrierFrequency(it) },
+                            onSelectChunkDelay = { viewModel.setChunkDelay(it) },
+                            onTriggerPermission = { viewModel.triggerPermissionRequest() }
+                        )
                     }
                 }
 
-            // ---------------------------------------------------------
-            // 4. REAL-TIME DEBUG CONSOLE
-            // ---------------------------------------------------------
-            DebugConsole(
-                logs = uiState.logs,
-                isExpanded = isDebugConsoleExpanded,
-                onToggle = { isDebugConsoleExpanded = !isDebugConsoleExpanded },
-                onClear = { viewModel.clearLogs() }
+                // ---------------------------------------------------------
+                // REAL-TIME DEBUG CONSOLE (COLLAPSIBLE)
+                // ---------------------------------------------------------
+                DebugConsole(
+                    logs = uiState.logs,
+                    isExpanded = isDebugConsoleExpanded,
+                    theme = theme,
+                    onToggle = { isDebugConsoleExpanded = !isDebugConsoleExpanded },
+                    onClear = { viewModel.clearLogs() }
+                )
+            }
+        }
+
+        // Save Signal Dialog
+        if (showSaveDialog) {
+            AlertDialog(
+                onDismissRequest = { showSaveDialog = false },
+                title = { Text("Save Signal to Library", fontWeight = FontWeight.Bold, color = TextPrimary) },
+                text = {
+                    Column {
+                        Text(
+                            "Give this captured signal a recognizable name:",
+                            color = TextSecondary,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = saveSignalName,
+                            onValueChange = { saveSignalName = it },
+                            label = { Text("Signal Name") },
+                            singleLine = true,
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = theme.primaryAccent,
+                                unfocusedBorderColor = TextMuted,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.saveCapturedSignal(saveSignalName)
+                            showSaveDialog = false
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = theme.primaryAccent, contentColor = Color.Black)
+                    ) {
+                        Text("Save", fontWeight = FontWeight.Bold)
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showSaveDialog = false }) {
+                        Text("Cancel", color = TextSecondary)
+                    }
+                }
             )
         }
-    }
-
-    // Save Captured Signal Dialog
-    if (showSaveDialog && uiState.lastCapturedSignal != null) {
-        AlertDialog(
-            onDismissRequest = { showSaveDialog = false },
-            containerColor = SurfaceDark,
-            title = {
-                Text("Save Captured IR Signal", color = TextPrimary, fontWeight = FontWeight.Bold)
-            },
-            text = {
-                Column {
-                    Text(
-                        "Give this captured signal a recognizable name:",
-                        color = TextSecondary,
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedTextField(
-                        value = saveSignalName,
-                        onValueChange = { saveSignalName = it },
-                        label = { Text("Signal Name") },
-                        singleLine = true,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedBorderColor = VioletPrimary,
-                            unfocusedBorderColor = TextMuted,
-                            focusedTextColor = TextPrimary,
-                            unfocusedTextColor = TextPrimary
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        viewModel.saveCapturedSignal(saveSignalName)
-                        showSaveDialog = false
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = VioletPrimary)
-                ) {
-                    Text("Save")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { showSaveDialog = false }) {
-                    Text("Cancel", color = TextSecondary)
-                }
-            }
-        )
-    }
 
         // Global IR Photon Blast Laser Animation Overlay
-        IrBlastParticleOverlay(isTransmitting = uiState.isTransmitting)
+        if (uiState.enableParticleBlast) {
+            IrBlastParticleOverlay(isTransmitting = uiState.isTransmitting)
+        }
     }
 }
 
 // =====================================================================
-// 1. CONNECTION HEADER
+// 1. LIQUID GLASS CONNECTION HEADER
 // =====================================================================
 @Composable
 fun ConnectionHeader(
     connectionState: ConnectionState,
+    theme: AppThemePalette,
     statusBanner: String,
     isListening: Boolean,
     isTransmitting: Boolean,
@@ -339,7 +359,7 @@ fun ConnectionHeader(
         is ConnectionState.Connected -> {
             val mode = if (connectionState.isSerial) "Serial CDC" else "Raw Bulk"
             Quadruple(
-                if (isListening) NeonCyan else if (isTransmitting) NeonAmber else NeonGreen,
+                if (isListening) theme.primaryAccent else if (isTransmitting) NeonAmber else NeonGreen,
                 "Connected: ${connectionState.vidHex}:${connectionState.pidHex}",
                 "$mode • ${connectionState.deviceName}",
                 false
@@ -355,7 +375,7 @@ fun ConnectionHeader(
         }
         is ConnectionState.DeviceDetected -> {
             Quadruple(
-                NeonCyan,
+                theme.primaryAccent,
                 "Device Found (${connectionState.vidHex}:${connectionState.pidHex})",
                 "Tap 'Connect Device' to request USB access",
                 true
@@ -395,24 +415,20 @@ fun ConnectionHeader(
         label = "badgeColorAnim"
     )
 
-    ElevatedCard(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
-            .drawBehind {
-                drawCircle(
-                    color = animatedColor.copy(alpha = 0.12f),
-                    radius = size.width * 0.45f,
-                    center = Offset(size.width * 0.5f, size.height * 0.5f)
-                )
-            },
+            .liquidGlass(
+                backgroundColor = theme.cardSurface,
+                borderGradient = listOf(animatedColor.copy(alpha = 0.6f), Color.Transparent, theme.primaryAccent.copy(alpha = 0.3f))
+            ),
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.elevatedCardColors(containerColor = CardSurface),
-        elevation = CardDefaults.elevatedCardElevation(defaultElevation = 6.dp)
+        colors = CardDefaults.cardColors(containerColor = Color.Transparent)
     ) {
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp)
+                .padding(14.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -435,7 +451,7 @@ fun ConnectionHeader(
                     )
                 }
 
-                Spacer(modifier = Modifier.width(14.dp))
+                Spacer(modifier = Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -448,69 +464,70 @@ fun ConnectionHeader(
                         text = statusSubtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
 
-                Icon(
-                    imageVector = if (connectionState is ConnectionState.Connected) Icons.Filled.Usb else Icons.Filled.UsbOff,
-                    contentDescription = "Status Icon",
-                    tint = animatedColor,
-                    modifier = Modifier.size(26.dp)
-                )
+                // Status Badge Chip
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(animatedColor.copy(alpha = 0.15f))
+                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                ) {
+                    Text(
+                        text = when {
+                            isTransmitting -> "TX BLAST"
+                            isListening -> "RX LEARN"
+                            connectionState is ConnectionState.Connected -> "READY"
+                            else -> "OFFLINE"
+                        },
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = animatedColor,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
             }
 
-            // Direct Permission Request Button if device is detected or requested
+            // Interactive Grant Permission / Connect Button if ungranted
             if (showPermissionBtn) {
-                Spacer(modifier = Modifier.height(12.dp))
+                Spacer(modifier = Modifier.height(10.dp))
                 Button(
                     onClick = onRequestPermission,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(44.dp),
+                    modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = VioletPrimary
-                    )
+                    colors = ButtonDefaults.buttonColors(containerColor = theme.secondaryAccent)
                 ) {
-                    Icon(
-                        Icons.Filled.Security,
-                        contentDescription = null,
-                        modifier = Modifier.size(18.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "Grant USB Permission / Connect",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
+                    Icon(Icons.Filled.Cable, contentDescription = null, modifier = Modifier.size(16.dp))
+                    Spacer(modifier = Modifier.width(6.dp))
+                    Text("Grant USB Permission / Connect", fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
     }
 }
 
-data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)
-
 // =====================================================================
-// 2. CLONING / LISTEN TAB
+// 2. CLONE & LISTEN TAB
 // =====================================================================
 @Composable
 fun CloneListenTab(
     isConnected: Boolean,
     isListening: Boolean,
     lastCapturedSignal: IrSignal?,
+    theme: AppThemePalette,
     onToggleListen: () -> Unit,
     onReplaySignal: (IrSignal) -> Unit,
     onOpenSaveDialog: () -> Unit
 ) {
-    val infiniteTransition = rememberInfiniteTransition(label = "listeningRipple")
+    val infiniteTransition = rememberInfiniteTransition(label = "listenRipple")
     val rippleScale by infiniteTransition.animateFloat(
-        initialValue = 0.95f,
-        targetValue = 1.05f,
+        initialValue = 1.0f,
+        targetValue = 1.04f,
         animationSpec = infiniteRepeatable(
-            animation = tween(800, easing = FastOutSlowInEasing),
+            animation = tween(800, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
         ),
         label = "rippleScale"
@@ -521,9 +538,14 @@ fun CloneListenTab(
     ) {
         // Hardware Diagnostic Hint
         Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(containerColor = SurfaceVariant.copy(alpha = 0.6f)),
-            shape = RoundedCornerShape(12.dp)
+            modifier = Modifier
+                .fillMaxWidth()
+                .liquidGlass(
+                    backgroundColor = theme.cardSurface,
+                    borderGradient = listOf(theme.primaryAccent.copy(alpha = 0.25f), Color.Transparent)
+                ),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
         ) {
             Row(
                 modifier = Modifier.padding(10.dp),
@@ -540,7 +562,7 @@ fun CloneListenTab(
             }
         }
 
-        Spacer(modifier = Modifier.height(14.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         // Main Listen Action Button
         Button(
@@ -548,33 +570,35 @@ fun CloneListenTab(
             enabled = isConnected,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(60.dp)
-                .scale(if (isListening) rippleScale else 1f),
+                .height(58.dp)
+                .scale(if (isListening) rippleScale else 1f)
+                .springBounceClickable(onClick = onToggleListen),
             shape = RoundedCornerShape(16.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = if (isListening) NeonRed else VioletPrimary,
+                containerColor = if (isListening) NeonRed else theme.primaryAccent,
+                contentColor = if (isListening) Color.White else Color.Black,
                 disabledContainerColor = SurfaceVariant
             )
         ) {
             if (isListening) {
-                SonarRadarVisualizer(isListening = true, modifier = Modifier.size(28.dp))
-                Spacer(modifier = Modifier.width(10.dp))
+                SonarRadarVisualizer(isListening = true, modifier = Modifier.size(26.dp))
+                Spacer(modifier = Modifier.width(8.dp))
             } else {
                 Icon(
                     imageVector = Icons.Filled.Hearing,
                     contentDescription = null,
-                    modifier = Modifier.size(24.dp)
+                    modifier = Modifier.size(22.dp)
                 )
-                Spacer(modifier = Modifier.width(10.dp))
+                Spacer(modifier = Modifier.width(8.dp))
             }
             Text(
                 text = if (isListening) "Stop Listening (Receiver Active)" else "Start Listening / Learn Mode",
                 fontWeight = FontWeight.Bold,
-                fontSize = 16.sp
+                fontSize = 15.sp
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // 1. Live Digital Logic Timing Diagram & Pulse Duration Bar Graph
         IrTimingGraph(
@@ -588,13 +612,17 @@ fun CloneListenTab(
         Spacer(modifier = Modifier.height(10.dp))
 
         // 2. Captured Signal Details & Actions Card (with animated Shimmer Border)
-        ElevatedCard(
+        Card(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(0.9f)
+                .liquidGlass(
+                    backgroundColor = theme.cardSurface,
+                    borderGradient = listOf(theme.primaryAccent.copy(alpha = 0.4f), Color.Transparent, theme.secondaryAccent.copy(alpha = 0.3f))
+                )
                 .shimmerBorder(enabled = lastCapturedSignal != null),
             shape = RoundedCornerShape(14.dp),
-            colors = CardDefaults.elevatedCardColors(containerColor = CardSurface)
+            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
         ) {
             Column(
                 modifier = Modifier
@@ -603,8 +631,7 @@ fun CloneListenTab(
             ) {
                 if (lastCapturedSignal != null) {
                     Column(
-                        modifier = Modifier
-                            .fillMaxSize()
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -627,7 +654,7 @@ fun CloneListenTab(
                             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Button(
                                     onClick = { onReplaySignal(lastCapturedSignal) },
-                                    colors = ButtonDefaults.buttonColors(containerColor = VioletDark),
+                                    colors = ButtonDefaults.buttonColors(containerColor = theme.secondaryAccent),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
                                     Icon(Icons.Filled.Replay, contentDescription = null, modifier = Modifier.size(16.dp))
@@ -637,37 +664,37 @@ fun CloneListenTab(
 
                                 FilledTonalButton(
                                     onClick = onOpenSaveDialog,
-                                    colors = ButtonDefaults.filledTonalButtonColors(
-                                        containerColor = NeonCyan.copy(alpha = 0.2f),
-                                        contentColor = NeonCyan
-                                    ),
+                                    colors = ButtonDefaults.filledTonalButtonColors(containerColor = SurfaceVariant),
                                     shape = RoundedCornerShape(8.dp)
                                 ) {
-                                    Icon(Icons.Filled.BookmarkAdd, contentDescription = null, modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Filled.BookmarkAdd, contentDescription = null, tint = theme.primaryAccent, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
-                                    Text("Save", fontSize = 12.sp)
+                                    Text("Save", color = theme.primaryAccent, fontSize = 12.sp)
                                 }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
 
-                        // Raw Microsecond Pulse Intervals
-                        Box(
+                        // Pulse Timing Hex/Raw Preview
+                        Card(
                             modifier = Modifier
-                                .weight(1f)
                                 .fillMaxWidth()
-                                .clip(RoundedCornerShape(8.dp))
-                                .background(DeepBackground)
-                                .padding(8.dp)
+                                .weight(1f),
+                            shape = RoundedCornerShape(8.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C))
                         ) {
-                            LazyColumn {
+                            LazyColumn(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(8.dp)
+                            ) {
                                 item {
                                     Text(
-                                        text = lastCapturedSignal.formattedString,
+                                        text = lastCapturedSignal.previewString,
                                         fontFamily = FontFamily.Monospace,
-                                        fontSize = 11.5.sp,
-                                        color = NeonCyan,
+                                        fontSize = 11.sp,
+                                        color = theme.primaryAccent,
                                         lineHeight = 16.sp
                                     )
                                 }
@@ -679,7 +706,7 @@ fun CloneListenTab(
                         modifier = Modifier
                             .fillMaxSize()
                             .clip(RoundedCornerShape(8.dp))
-                            .background(DeepBackground),
+                            .background(Color(0xFF04060C)),
                         contentAlignment = Alignment.Center
                     ) {
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -693,7 +720,7 @@ fun CloneListenTab(
                             Text(
                                 text = if (isListening) "Listening on IR photodiode..." else "Click 'Start Listening' to capture IR waveforms",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = if (isListening) NeonCyan else TextMuted
+                                color = if (isListening) theme.primaryAccent else TextMuted
                             )
                         }
                     }
@@ -712,6 +739,7 @@ fun TransmitTab(
     isTransmitting: Boolean,
     signals: List<IrSignal>,
     lastCapturedSignal: IrSignal?,
+    theme: AppThemePalette,
     onTransmitSignal: (IrSignal) -> Unit,
     onTransmitRaw: (Int, String) -> Unit,
     onDeleteSignal: (IrSignal) -> Unit
@@ -730,7 +758,7 @@ fun TransmitTab(
                 "Standard Test Presets (NEC 38kHz)",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = VioletLight
+                color = theme.primaryAccent
             )
             Spacer(modifier = Modifier.height(6.dp))
 
@@ -741,73 +769,80 @@ fun TransmitTab(
                         icon = Icons.Filled.PowerSettingsNew,
                         color = NeonRed,
                         enabled = isConnected && !isTransmitting,
-                        onClick = {
-                            onTransmitRaw(38000, "9000, 4500, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 560, 560, 1690, 560, 560, 560, 560, 560, 1690, 560, 560, 560, 560, 560, 560, 560, 1690, 560, 560, 560, 1690, 560, 1690, 560, 560, 560, 1690, 560, 1690, 560, 1690, 560")
-                        }
+                        onClick = { onTransmitSignal(IrProtocolHelper.PRESET_SIGNALS[0]) }
                     )
                 }
                 item {
                     PresetButton(
                         label = "Mute",
-                        icon = Icons.AutoMirrored.Filled.VolumeMute,
+                        icon = Icons.Filled.VolumeOff,
                         color = NeonAmber,
                         enabled = isConnected && !isTransmitting,
-                        onClick = {
-                            onTransmitRaw(38000, "9000, 4500, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 560, 560, 1690, 560, 1690, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 1690, 560, 560, 560, 560, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560")
-                        }
+                        onClick = { onTransmitSignal(IrProtocolHelper.PRESET_SIGNALS[1]) }
                     )
                 }
                 item {
                     PresetButton(
                         label = "Vol +",
                         icon = Icons.AutoMirrored.Filled.VolumeUp,
-                        color = NeonCyan,
+                        color = NeonGreen,
                         enabled = isConnected && !isTransmitting,
-                        onClick = {
-                            onTransmitRaw(38000, "9000, 4500, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 560, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 560, 560, 560, 560, 560, 560, 560, 560, 1690, 560, 560, 560, 560, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560")
-                        }
+                        onClick = { onTransmitSignal(IrProtocolHelper.PRESET_SIGNALS[2]) }
                     )
                 }
                 item {
                     PresetButton(
                         label = "Vol -",
                         icon = Icons.AutoMirrored.Filled.VolumeDown,
-                        color = NeonCyan,
+                        color = theme.primaryAccent,
                         enabled = isConnected && !isTransmitting,
-                        onClick = {
-                            onTransmitRaw(38000, "9000, 4500, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560, 560, 560, 1690, 560, 560, 560, 1690, 560, 1690, 560, 560, 560, 560, 560, 560, 560, 560, 560, 1690, 560, 1690, 560, 560, 560, 1690, 560, 1690, 560, 1690, 560, 1690, 560")
-                        }
+                        onClick = { onTransmitSignal(IrProtocolHelper.PRESET_SIGNALS[3]) }
+                    )
+                }
+                item {
+                    PresetButton(
+                        label = "Samsung Power",
+                        icon = Icons.Filled.Tv,
+                        color = theme.secondaryAccent,
+                        enabled = isConnected && !isTransmitting,
+                        onClick = { onTransmitSignal(IrProtocolHelper.PRESET_SIGNALS[4]) }
                     )
                 }
             }
         }
 
-        // Replay Last Captured
+        // Active Captured Signal Quick Replay
         if (lastCapturedSignal != null) {
             item {
                 Card(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .liquidGlass(
+                            backgroundColor = theme.cardSurface,
+                            borderGradient = listOf(theme.primaryAccent.copy(alpha = 0.5f), Color.Transparent)
+                        ),
                     shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = VioletDark.copy(alpha = 0.5f))
+                    colors = CardDefaults.cardColors(containerColor = Color.Transparent)
                 ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Last Captured Code", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                            Text("${lastCapturedSignal.timings.size} pulses", color = NeonCyan, fontSize = 12.sp)
+                            Text(lastCapturedSignal.name, fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
+                            Text("${lastCapturedSignal.timings.size} pulses • ${lastCapturedSignal.frequency}Hz", color = theme.primaryAccent, fontSize = 12.sp)
                         }
                         Button(
                             onClick = { onTransmitSignal(lastCapturedSignal) },
                             enabled = isConnected && !isTransmitting,
-                            colors = ButtonDefaults.buttonColors(containerColor = NeonCyan)
+                            colors = ButtonDefaults.buttonColors(containerColor = theme.primaryAccent, contentColor = Color.Black)
                         ) {
-                            Icon(Icons.Filled.PlayArrow, contentDescription = null, tint = DeepBackground, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Filled.PlayArrow, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("Replay", color = DeepBackground, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                            Text("Replay", fontWeight = FontWeight.Bold, fontSize = 12.sp)
                         }
                     }
                 }
@@ -816,10 +851,15 @@ fun TransmitTab(
 
         // Manual Raw Timing Section
         item {
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .liquidGlass(
+                        backgroundColor = theme.cardSurface,
+                        borderGradient = listOf(theme.secondaryAccent.copy(alpha = 0.35f), Color.Transparent)
+                    ),
                 shape = RoundedCornerShape(12.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = CardSurface)
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
             ) {
                 Column(modifier = Modifier.padding(12.dp)) {
                     Row(
@@ -832,7 +872,7 @@ fun TransmitTab(
                             "Manual Raw Timings Input",
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
-                            color = VioletLight,
+                            color = theme.primaryAccent,
                             modifier = Modifier.weight(1f)
                         )
                         Text(if (isManualExpanded) "▲" else "▼", color = TextMuted, fontSize = 12.sp)
@@ -848,7 +888,7 @@ fun TransmitTab(
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 modifier = Modifier.fillMaxWidth(),
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = VioletPrimary,
+                                    focusedBorderColor = theme.primaryAccent,
                                     unfocusedBorderColor = TextMuted
                                 )
                             )
@@ -858,11 +898,10 @@ fun TransmitTab(
                                 onValueChange = { rawTimingsText = it },
                                 label = { Text("Timings (+mark -space in µs)") },
                                 placeholder = { Text("+9000 -4500 +560 -560...", color = TextMuted) },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(90.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                minLines = 2,
                                 colors = OutlinedTextFieldDefaults.colors(
-                                    focusedBorderColor = VioletPrimary,
+                                    focusedBorderColor = theme.primaryAccent,
                                     unfocusedBorderColor = TextMuted
                                 )
                             )
@@ -874,9 +913,11 @@ fun TransmitTab(
                                 },
                                 enabled = isConnected && !isTransmitting && rawTimingsText.isNotBlank(),
                                 modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(containerColor = VioletPrimary)
+                                colors = ButtonDefaults.buttonColors(containerColor = theme.primaryAccent, contentColor = Color.Black)
                             ) {
-                                Text("Send Raw Pulses", fontWeight = FontWeight.Bold)
+                                Icon(Icons.AutoMirrored.Filled.Send, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Blast Raw Sequence", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
@@ -890,16 +931,21 @@ fun TransmitTab(
                 "Signals Library (${signals.size})",
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.Bold,
-                color = VioletLight,
+                color = theme.primaryAccent,
                 modifier = Modifier.padding(top = 6.dp)
             )
         }
 
         items(signals) { signal ->
-            ElevatedCard(
-                modifier = Modifier.fillMaxWidth(),
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .liquidGlass(
+                        backgroundColor = theme.cardSurface,
+                        borderGradient = listOf(theme.primaryAccent.copy(alpha = 0.25f), Color.Transparent)
+                    ),
                 shape = RoundedCornerShape(10.dp),
-                colors = CardDefaults.elevatedCardColors(containerColor = CardSurface)
+                colors = CardDefaults.cardColors(containerColor = Color.Transparent)
             ) {
                 Row(
                     modifier = Modifier
@@ -926,8 +972,8 @@ fun TransmitTab(
                         enabled = isConnected && !isTransmitting,
                         shape = RoundedCornerShape(8.dp),
                         colors = ButtonDefaults.filledTonalButtonColors(
-                            containerColor = VioletDark,
-                            contentColor = VioletLight
+                            containerColor = theme.secondaryAccent,
+                            contentColor = Color.White
                         )
                     ) {
                         Icon(Icons.AutoMirrored.Filled.Send, contentDescription = "TX", modifier = Modifier.size(14.dp))
@@ -976,6 +1022,7 @@ fun PresetButton(
 fun DebugConsole(
     logs: List<String>,
     isExpanded: Boolean,
+    theme: AppThemePalette,
     onToggle: () -> Unit,
     onClear: () -> Unit
 ) {
@@ -992,7 +1039,7 @@ fun DebugConsole(
             .fillMaxWidth()
             .animateContentSize(animationSpec = spring(dampingRatio = 0.8f, stiffness = 300f))
     ) {
-        HorizontalDivider(color = SurfaceVariant, thickness = 1.dp)
+        HorizontalDivider(color = Color.White.copy(alpha = 0.08f), thickness = 1.dp)
 
         Row(
             modifier = Modifier
@@ -1001,67 +1048,74 @@ fun DebugConsole(
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(Icons.Filled.BugReport, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(8.dp))
             Text(
-                text = "Hardware Console & Hex Payloads (${logs.size})",
-                style = MaterialTheme.typography.labelMedium,
-                color = TextSecondary,
+                text = "Hardware Debug Console (${logs.size})",
+                style = MaterialTheme.typography.bodySmall,
+                color = if (isExpanded) theme.primaryAccent else TextMuted,
+                fontWeight = FontWeight.Bold,
                 modifier = Modifier.weight(1f)
             )
 
-            if (isExpanded) {
-                IconButton(onClick = onClear, modifier = Modifier.size(28.dp)) {
-                    Icon(Icons.Filled.ClearAll, contentDescription = "Clear", tint = TextMuted, modifier = Modifier.size(16.dp))
-                }
+            if (isExpanded && logs.isNotEmpty()) {
+                Text(
+                    text = "Clear",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = NeonRed,
+                    modifier = Modifier
+                        .clickable { onClear() }
+                        .padding(horizontal = 8.dp)
+                )
             }
 
-            Text(if (isExpanded) "▼" else "▲", color = TextMuted, fontSize = 11.sp)
+            Text(
+                text = if (isExpanded) "▲ Hide" else "▼ Show",
+                style = MaterialTheme.typography.bodySmall,
+                color = TextMuted
+            )
         }
 
-        AnimatedVisibility(
-            visible = isExpanded,
-            enter = fadeIn(tween(150)) + slideInVertically(initialOffsetY = { it / 2 }),
-            exit = fadeOut(tween(100)) + slideOutVertically(targetOffsetY = { it / 2 })
-        ) {
-            Box(
+        if (isExpanded) {
+            Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(160.dp)
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF07070E))
-                    .padding(8.dp)
+                    .height(130.dp),
+                shape = RoundedCornerShape(8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C))
             ) {
                 if (logs.isEmpty()) {
-                    Text(
-                        "No serial packets logged yet.",
-                        color = TextMuted,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.align(Alignment.Center)
-                    )
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("No log entries yet. Connect dongle to view serial bus traffic.", color = TextMuted, fontSize = 11.sp)
+                    }
                 } else {
-                    LazyColumn(state = scrollState) {
-                        items(logs) { log ->
-                            val color = when {
-                                "error" in log.lowercase() || "failed" in log.lowercase() -> NeonRed.copy(alpha = 0.9f)
-                                "success" in log.lowercase() || "connected" in log.lowercase() -> NeonGreen.copy(alpha = 0.9f)
-                                "tx" in log.lowercase() -> NeonAmber.copy(alpha = 0.9f)
-                                "rx" in log.lowercase() -> NeonCyan.copy(alpha = 0.9f)
-                                else -> TextMuted
-                            }
+                    LazyColumn(
+                        state = scrollState,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(8.dp)
+                    ) {
+                        items(logs) { logEntry ->
                             Text(
-                                text = log,
-                                fontFamily = FontFamily.Monospace,
+                                text = logEntry,
                                 fontSize = 10.5.sp,
-                                color = color,
-                                lineHeight = 14.sp
+                                fontFamily = FontFamily.Monospace,
+                                color = when {
+                                    logEntry.contains("TX") -> NeonCyan
+                                    logEntry.contains("RX") -> NeonAmber
+                                    logEntry.contains("✓") -> NeonGreen
+                                    logEntry.contains("✗") || logEntry.contains("Error") -> NeonRed
+                                    else -> TextSecondary
+                                }
                             )
                         }
                     }
                 }
             }
+            Spacer(modifier = Modifier.height(6.dp))
         }
-        Spacer(modifier = Modifier.height(4.dp))
     }
 }
+
+data class Quadruple<A, B, C, D>(val first: A, val second: B, val third: C, val fourth: D)

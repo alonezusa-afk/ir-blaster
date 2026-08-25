@@ -5,35 +5,72 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- IR signal rays -->
+    <!-- Ambient Glow Halo behind Dongle -->
     <path
-        android:fillColor="#B388FF"
-        android:pathData="M54,38 L58,30 L50,30 Z" />
-    <path
-        android:fillColor="#B388FF"
-        android:pathData="M40,44 L34,38 L36,46 Z" />
-    <path
-        android:fillColor="#B388FF"
-        android:pathData="M68,44 L74,38 L72,46 Z" />
+        android:fillColor="#1A00E5FF"
+        android:pathData="M54,54 m-36,0 a36,36 0 1,0 72,0 a36,36 0 1,0 -72,0" />
 
-    <!-- IR emitter body -->
+    <!-- Outer Concentric IR Photon Waves (Neon Cyan & Electric Amber) -->
     <path
-        android:fillColor="#7C4DFF"
-        android:pathData="M46,48 C46,44 62,44 62,48 L62,72 C62,76 46,76 46,72 Z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#4400E5FF"
+        android:strokeWidth="1.8"
+        android:pathData="M32,24 C45,14 63,14 76,24" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#8800E5FF"
+        android:strokeWidth="2.2"
+        android:pathData="M38,30 C47,22 61,22 70,30" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#CCFFB300"
+        android:strokeWidth="2.6"
+        android:pathData="M44,36 C49,31 59,31 64,36" />
 
-    <!-- LED tip glow -->
+    <!-- Liquid Obsidian Glass Dongle Body -->
     <path
-        android:fillColor="#E8DEF8"
-        android:pathData="M50,44 C50,42 58,42 58,44 C58,46 50,46 50,44 Z" />
+        android:fillColor="#151A28"
+        android:strokeColor="#5500E5FF"
+        android:strokeWidth="1.5"
+        android:pathData="M42,46 C42,42 66,42 66,46 L66,74 C66,78 42,78 42,74 Z" />
 
-    <!-- USB connector -->
+    <!-- Specular Glass Top Sheen -->
     <path
-        android:fillColor="#9E9EB8"
-        android:pathData="M48,72 L48,80 L60,80 L60,72 Z" />
+        android:fillColor="#22FFFFFF"
+        android:pathData="M43,47 L65,47 L65,51 L43,55 Z" />
+
+    <!-- IR Optical Lens / Laser Aperture (Center Core) -->
     <path
-        android:fillColor="#6B6B85"
-        android:pathData="M50,76 L50,80 L52,80 L52,76 Z" />
+        android:fillColor="#FF8C00"
+        android:pathData="M54,43 m-5,0 a5,5 0 1,0 10,0 a5,5 0 1,0 -10,0" />
     <path
-        android:fillColor="#6B6B85"
-        android:pathData="M56,76 L56,80 L58,80 L58,76 Z" />
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,43 m-2,0 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0" />
+
+    <!-- Status Power Indicator LED -->
+    <path
+        android:fillColor="#00E5FF"
+        android:pathData="M54,58 m-2,0 a2,2 0 1,0 4,0 a2,2 0 1,0 -4,0" />
+
+    <!-- Digital Bus Data Trace Pattern on Glass -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#3300E5FF"
+        android:strokeWidth="1.2"
+        android:pathData="M48,64 L54,64 L54,69 L60,69" />
+
+    <!-- USB Type-C Titanium Connector Base -->
+    <path
+        android:fillColor="#1E293B"
+        android:strokeColor="#64748B"
+        android:strokeWidth="1.2"
+        android:pathData="M45,74 L45,84 C45,86 63,86 63,84 L63,74 Z" />
+
+    <!-- Gold Plated Contact Pins inside USB-C -->
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M48,77 L51,77 L51,81 L48,81 Z" />
+    <path
+        android:fillColor="#FFD700"
+        android:pathData="M57,77 L60,77 L60,81 L57,81 Z" />
 </vector>
