@@ -6,6 +6,7 @@
 [![Platform](https://img.shields.io/badge/Platform-Android%208.0%2B-blue.svg)](https://android.com)
 [![Language](https://img.shields.io/badge/Kotlin-2.1.0-purple.svg)](https://kotlinlang.org)
 [![Framework](https://img.shields.io/badge/UI-Jetpack%20Compose-green.svg)](https://developer.android.com/jetpack/compose)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Status](https://img.shields.io/badge/Status-Under%20Construction-orange.svg)]()
 
 A high-performance Android application built with **Jetpack Compose** that interfaces natively with USB Type-C IR Blaster & Learning dongles (Getzget 7th Gen, Ocrustar, ZaZa Remote, Tiqiaa, and ElkSmart) using raw USB Bulk endpoints and custom vendor communication protocols.
@@ -69,6 +70,12 @@ The compiled APK will be generated at:
 2. Connect your USB Type-C IR dongle.
 3. Tap **"Grant USB Permission / Connect"** on the connection prompt.
 4. Go to **Listen / Learn** mode to capture remote signals, or use **Transmit** mode to blast IR codes.
+
+---
+
+## 📄 License
+
+This project is licensed under the [MIT License](LICENSE).
 
 ---
 
