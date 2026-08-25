@@ -44,7 +44,6 @@ import androidx.compose.material.icons.automirrored.filled.VolumeDown
 import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.BookmarkAdd
 import androidx.compose.material.icons.filled.Cable
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Hearing
 import androidx.compose.material.icons.filled.Info
@@ -52,7 +51,6 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PowerSettingsNew
 import androidx.compose.material.icons.filled.Replay
 import androidx.compose.material.icons.filled.SettingsRemote
-import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material.icons.filled.Tv
 import androidx.compose.material.icons.filled.VolumeOff
@@ -61,7 +59,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedCard
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -87,10 +84,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -99,14 +93,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.irblaster.app.model.IrSignal
+import com.irblaster.app.ui.components.FlipperIrWaveformGraph
 import com.irblaster.app.ui.components.IrBlastParticleOverlay
-import com.irblaster.app.ui.components.IrTimingGraph
 import com.irblaster.app.ui.components.SonarRadarVisualizer
-import com.irblaster.app.usb.IrProtocolHelper
 import com.irblaster.app.ui.components.shimmerBorder
 import com.irblaster.app.ui.components.springBounceClickable
 import com.irblaster.app.ui.theme.AppThemePalette
-import com.irblaster.app.ui.theme.CardSurface
 import com.irblaster.app.ui.theme.LiquidAmbientBackground
 import com.irblaster.app.ui.theme.NeonAmber
 import com.irblaster.app.ui.theme.NeonCyan
@@ -117,6 +109,7 @@ import com.irblaster.app.ui.theme.TextMuted
 import com.irblaster.app.ui.theme.TextPrimary
 import com.irblaster.app.ui.theme.TextSecondary
 import com.irblaster.app.ui.theme.liquidGlass
+import com.irblaster.app.usb.IrProtocolHelper
 import com.irblaster.app.viewmodel.ConnectionState
 import com.irblaster.app.viewmodel.MainViewModel
 
@@ -144,9 +137,9 @@ fun MainScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 14.dp)
+                    .padding(horizontal = 12.dp)
             ) {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 // ---------------------------------------------------------
                 // 1. LIQUID GLASS CONNECTION HEADER
@@ -160,15 +153,16 @@ fun MainScreen(
                     onRequestPermission = onRequestPermission
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // ---------------------------------------------------------
-                // NAVIGATION TABS (3 Tabs: Clone/Listen, Transmit, Settings)
+                // NAVIGATION TABS (4 Tabs: Clone/Learn, Remote Library, Presets, Settings)
                 // ---------------------------------------------------------
                 val tabs = listOf(
-                    Triple("Clone & Learn", Icons.Filled.Hearing, 0),
-                    Triple("Transmit & Remote", Icons.AutoMirrored.Filled.Send, 1),
-                    Triple("Settings & Themes", Icons.Filled.Tune, 2)
+                    Triple("Learn", Icons.Filled.Hearing, 0),
+                    Triple("Remotes", Icons.Filled.SettingsRemote, 1),
+                    Triple("Presets", Icons.AutoMirrored.Filled.Send, 2),
+                    Triple("Settings", Icons.Filled.Tune, 3)
                 )
 
                 TabRow(
@@ -186,7 +180,7 @@ fun MainScreen(
                         .clip(RoundedCornerShape(14.dp))
                         .liquidGlass(
                             backgroundColor = theme.cardSurface,
-                            borderGradient = listOf(theme.primaryAccent.copy(alpha = 0.3f), Color.Transparent, theme.secondaryAccent.copy(alpha = 0.3f))
+                            borderGradient = listOf(theme.primaryAccent.copy(alpha = 0.35f), Color.Transparent, theme.secondaryAccent.copy(alpha = 0.35f))
                         )
                 ) {
                     tabs.forEachIndexed { index, (title, icon, _) ->
@@ -198,7 +192,7 @@ fun MainScreen(
                                     title,
                                     fontWeight = if (selectedTab == index) FontWeight.Bold else FontWeight.Medium,
                                     color = if (selectedTab == index) theme.primaryAccent else TextSecondary,
-                                    fontSize = 12.sp,
+                                    fontSize = 11.5.sp,
                                     maxLines = 1,
                                     overflow = TextOverflow.Ellipsis
                                 )
@@ -208,28 +202,28 @@ fun MainScreen(
                                     imageVector = icon,
                                     contentDescription = title,
                                     tint = if (selectedTab == index) theme.primaryAccent else TextMuted,
-                                    modifier = Modifier.size(18.dp)
+                                    modifier = Modifier.size(17.dp)
                                 )
                             }
                         )
                     }
                 }
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
 
                 // ---------------------------------------------------------
-                // MAIN TAB CONTENT (Smooth Animated Transitions)
+                // MAIN TAB CONTENT (Smooth Hardware-Accelerated Transitions)
                 // ---------------------------------------------------------
                 AnimatedContent(
                     targetState = selectedTab,
                     transitionSpec = {
                         if (targetState > initialState) {
-                            (slideInHorizontally { width -> width } + fadeIn(tween(280))).togetherWith(
-                                slideOutHorizontally { width -> -width } + fadeOut(tween(180))
+                            (slideInHorizontally { width -> width } + fadeIn(tween(260))).togetherWith(
+                                slideOutHorizontally { width -> -width } + fadeOut(tween(160))
                             )
                         } else {
-                            (slideInHorizontally { width -> -width } + fadeIn(tween(280))).togetherWith(
-                                slideOutHorizontally { width -> width } + fadeOut(tween(180))
+                            (slideInHorizontally { width -> -width } + fadeIn(tween(260))).togetherWith(
+                                slideOutHorizontally { width -> width } + fadeOut(tween(160))
                             )
                         }.using(SizeTransform(clip = false))
                     },
@@ -251,7 +245,13 @@ fun MainScreen(
                                 showSaveDialog = true
                             }
                         )
-                        1 -> TransmitTab(
+                        1 -> UniversalRemoteScreen(
+                            isConnected = uiState.connectionState is ConnectionState.Connected,
+                            isTransmitting = uiState.isTransmitting,
+                            theme = theme,
+                            onTransmitSignal = { viewModel.transmitSignal(it) }
+                        )
+                        2 -> TransmitTab(
                             isConnected = uiState.connectionState is ConnectionState.Connected,
                             isTransmitting = uiState.isTransmitting,
                             signals = uiState.capturedSignals,
@@ -261,7 +261,7 @@ fun MainScreen(
                             onTransmitRaw = { freq, raw -> viewModel.transmitRaw(freq, raw) },
                             onDeleteSignal = { viewModel.deleteSignal(it) }
                         )
-                        2 -> SettingsTab(
+                        3 -> SettingsTab(
                             uiState = uiState,
                             onSelectTheme = { viewModel.setTheme(it) },
                             onToggleAmoled = { viewModel.setAmoledMode(it) },
@@ -393,7 +393,7 @@ fun ConnectionHeader(
             Quadruple(
                 NeonRed,
                 "Dongle Disconnected",
-                "Plug in USB-C IR Blaster (or tap scan)",
+                "Plug in USB-C IR Blaster (Auto-detecting)",
                 false
             )
         }
@@ -428,7 +428,7 @@ fun ConnectionHeader(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(14.dp)
+                .padding(12.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -437,35 +437,37 @@ fun ConnectionHeader(
                 // Animated Status Dot with Ripple
                 Box(
                     modifier = Modifier
-                        .size(24.dp)
+                        .size(22.dp)
                         .clip(CircleShape)
                         .background(animatedColor.copy(alpha = 0.2f)),
                     contentAlignment = Alignment.Center
                 ) {
                     Box(
                         modifier = Modifier
-                            .size(12.dp)
+                            .size(11.dp)
                             .scale(if (connectionState is ConnectionState.Connected || isListening || connectionState is ConnectionState.DeviceDetected) pulseScale else 1f)
                             .clip(CircleShape)
                             .background(animatedColor)
                     )
                 }
 
-                Spacer(modifier = Modifier.width(12.dp))
+                Spacer(modifier = Modifier.width(10.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = statusTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        color = TextPrimary
+                        color = TextPrimary,
+                        fontSize = 14.sp
                     )
                     Text(
                         text = statusSubtitle,
                         style = MaterialTheme.typography.bodySmall,
                         color = TextSecondary,
                         maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                        overflow = TextOverflow.Ellipsis,
+                        fontSize = 11.sp
                     )
                 }
 
@@ -474,16 +476,16 @@ fun ConnectionHeader(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(animatedColor.copy(alpha = 0.15f))
-                        .padding(horizontal = 8.dp, vertical = 4.dp)
+                        .padding(horizontal = 7.dp, vertical = 3.dp)
                 ) {
                     Text(
                         text = when {
                             isTransmitting -> "TX BLAST"
                             isListening -> "RX LEARN"
                             connectionState is ConnectionState.Connected -> "READY"
-                            else -> "OFFLINE"
+                            else -> "AUTO-SCAN"
                         },
-                        fontSize = 11.sp,
+                        fontSize = 10.sp,
                         fontWeight = FontWeight.Bold,
                         color = animatedColor,
                         fontFamily = FontFamily.Monospace
@@ -493,7 +495,7 @@ fun ConnectionHeader(
 
             // Interactive Grant Permission / Connect Button if ungranted
             if (showPermissionBtn) {
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(8.dp))
                 Button(
                     onClick = onRequestPermission,
                     modifier = Modifier.fillMaxWidth(),
@@ -502,7 +504,7 @@ fun ConnectionHeader(
                 ) {
                     Icon(Icons.Filled.Cable, contentDescription = null, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Grant USB Permission / Connect", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("Grant USB Permission / Connect", fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -510,7 +512,7 @@ fun ConnectionHeader(
 }
 
 // =====================================================================
-// 2. CLONE & LISTEN TAB
+// 2. CLONE & LISTEN TAB (WITH COMPACT FLIPPER ZERO WAVEFORM GRAPH)
 // =====================================================================
 @Composable
 fun CloneListenTab(
@@ -525,7 +527,7 @@ fun CloneListenTab(
     val infiniteTransition = rememberInfiniteTransition(label = "listenRipple")
     val rippleScale by infiniteTransition.animateFloat(
         initialValue = 1.0f,
-        targetValue = 1.04f,
+        targetValue = 1.03f,
         animationSpec = infiniteRepeatable(
             animation = tween(800, easing = LinearEasing),
             repeatMode = RepeatMode.Reverse
@@ -536,44 +538,16 @@ fun CloneListenTab(
     Column(
         modifier = Modifier.fillMaxSize()
     ) {
-        // Hardware Diagnostic Hint
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .liquidGlass(
-                    backgroundColor = theme.cardSurface,
-                    borderGradient = listOf(theme.primaryAccent.copy(alpha = 0.25f), Color.Transparent)
-                ),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.Transparent)
-        ) {
-            Row(
-                modifier = Modifier.padding(10.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(Icons.Filled.Info, contentDescription = null, tint = NeonAmber, modifier = Modifier.size(16.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "Requires receiver photodiode on dongle (2 diodes on tip) to learn signals.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = TextSecondary,
-                    fontSize = 11.sp
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
         // Main Listen Action Button
         Button(
             onClick = onToggleListen,
             enabled = isConnected,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(58.dp)
+                .height(52.dp)
                 .scale(if (isListening) rippleScale else 1f)
                 .springBounceClickable(onClick = onToggleListen),
-            shape = RoundedCornerShape(16.dp),
+            shape = RoundedCornerShape(14.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = if (isListening) NeonRed else theme.primaryAccent,
                 contentColor = if (isListening) Color.White else Color.Black,
@@ -581,32 +555,30 @@ fun CloneListenTab(
             )
         ) {
             if (isListening) {
-                SonarRadarVisualizer(isListening = true, modifier = Modifier.size(26.dp))
+                SonarRadarVisualizer(isListening = true, modifier = Modifier.size(24.dp))
                 Spacer(modifier = Modifier.width(8.dp))
             } else {
                 Icon(
                     imageVector = Icons.Filled.Hearing,
                     contentDescription = null,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(20.dp)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
             }
             Text(
-                text = if (isListening) "Stop Listening (Receiver Active)" else "Start Listening / Learn Mode",
+                text = if (isListening) "Stop Listening (Receiver Active)" else "Start Listening / Flipper Learn",
                 fontWeight = FontWeight.Bold,
-                fontSize = 15.sp
+                fontSize = 14.sp
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
-        // 1. Live Digital Logic Timing Diagram & Pulse Duration Bar Graph
-        IrTimingGraph(
+        // 1. Flipper Zero Style Compact IR Waveform Graph Analyzer (Small Pillars)
+        FlipperIrWaveformGraph(
             signal = lastCapturedSignal,
             isListening = isListening,
-            modifier = Modifier
-                .fillMaxWidth()
-                .weight(1.35f)
+            accentColor = theme.primaryAccent
         )
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -615,7 +587,7 @@ fun CloneListenTab(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(0.9f)
+                .weight(1f)
                 .liquidGlass(
                     backgroundColor = theme.cardSurface,
                     borderGradient = listOf(theme.primaryAccent.copy(alpha = 0.4f), Color.Transparent, theme.secondaryAccent.copy(alpha = 0.3f))
@@ -714,11 +686,11 @@ fun CloneListenTab(
                                 Icons.Filled.SettingsRemote,
                                 contentDescription = null,
                                 tint = TextMuted,
-                                modifier = Modifier.size(32.dp)
+                                modifier = Modifier.size(30.dp)
                             )
                             Spacer(modifier = Modifier.height(6.dp))
                             Text(
-                                text = if (isListening) "Listening on IR photodiode..." else "Click 'Start Listening' to capture IR waveforms",
+                                text = if (isListening) "Listening on photodiode (aim remote 2cm away)..." else "Tap 'Start Listening' to capture IR waveforms",
                                 style = MaterialTheme.typography.bodySmall,
                                 color = if (isListening) theme.primaryAccent else TextMuted
                             )
@@ -731,7 +703,7 @@ fun CloneListenTab(
 }
 
 // =====================================================================
-// 3. TRANSMIT TAB (PRESETS & SAVED SIGNALS)
+// 3. TRANSMIT & PRESETS TAB
 // =====================================================================
 @Composable
 fun TransmitTab(
@@ -1078,7 +1050,7 @@ fun DebugConsole(
             Card(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(130.dp),
+                    .height(120.dp),
                 shape = RoundedCornerShape(8.dp),
                 colors = CardDefaults.cardColors(containerColor = Color(0xFF04060C))
             ) {

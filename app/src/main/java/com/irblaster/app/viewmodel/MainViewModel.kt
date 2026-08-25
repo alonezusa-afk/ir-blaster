@@ -59,7 +59,7 @@ data class UiState(
 class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val prefs = application.getSharedPreferences("ir_blaster_settings", Context.MODE_PRIVATE)
-    private val usbIrManager = UsbIrManager.getInstance(application)
+    val usbIrManager = UsbIrManager.getInstance(application)
     private val timeFormatter = SimpleDateFormat("HH:mm:ss.SSS", Locale.US)
 
     private val _uiState = MutableStateFlow(

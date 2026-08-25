@@ -21,10 +21,11 @@ import com.irblaster.app.ui.screens.MainScreen
 import com.irblaster.app.ui.theme.IrBlasterTheme
 import com.irblaster.app.viewmodel.MainViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 /**
- * MainActivity managing the USB hardware lifecycle, USB host permissions,
+ * MainActivity managing the USB hardware lifecycle, auto-detection, instant USB permissions,
  * and Jetpack Compose UI binding.
  */
 class MainActivity : ComponentActivity() {
@@ -60,7 +61,7 @@ class MainActivity : ComponentActivity() {
                         } else if (device != null) {
                             viewModel.onUsbPermissionDenied(device)
                         } else {
-                            // Fallback: check device list if device was null in intent
+                            // Inspect and retry
                             inspectConnectedUsbDevices()
                         }
                     }
@@ -94,7 +95,7 @@ class MainActivity : ComponentActivity() {
 
         usbManager = getSystemService(Context.USB_SERVICE) as UsbManager
 
-        // Register Dynamic BroadcastReceiver with RECEIVER_EXPORTED for system USB broadcasts
+        // Register USB Broadcast Receiver for dynamic plug/unplug & permission callbacks
         val filter = IntentFilter().apply {
             addAction(ACTION_USB_PERMISSION)
             addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED)
@@ -102,7 +103,7 @@ class MainActivity : ComponentActivity() {
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            registerReceiver(usbReceiver, filter, Context.RECEIVER_EXPORTED)
+            registerReceiver(usbReceiver, filter, Context.RECEIVER_NOT_EXPORTED)
         } else {
             registerReceiver(usbReceiver, filter)
         }
@@ -134,13 +135,29 @@ class MainActivity : ComponentActivity() {
                 )
             }
         }
+
+        // Start auto-detection watcher
+        startAutoDetectionWatcher()
+    }
+
+    private fun startAutoDetectionWatcher() {
+        lifecycleScope.launch {
+            while (isActive) {
+                if (!viewModel.uiState.value.isTransmitting && !viewModel.uiState.value.isListening) {
+                    val deviceList = usbManager.deviceList
+                    if (deviceList.isNotEmpty() && !viewModel.usbIrManager.isConnected) {
+                        inspectConnectedUsbDevices()
+                    }
+                }
+                delay(1500)
+            }
+        }
     }
 
     override fun onResume() {
         super.onResume()
-        // Allow the Activity window to gain complete foreground focus before triggering system dialog
         lifecycleScope.launch {
-            delay(300)
+            delay(200)
             inspectConnectedUsbDevices()
         }
     }
@@ -167,14 +184,17 @@ class MainActivity : ComponentActivity() {
         Log.d(TAG, "Scanning USB devices: ${deviceList.size} connected")
 
         if (deviceList.isEmpty()) {
-            Log.d(TAG, "No USB devices detected.")
             return
         }
 
-        for ((_, device) in deviceList) {
-            Log.d(TAG, "Discovered USB Device: ${device.deviceName} (VID: 0x${"%04X".format(device.vendorId)} PID: 0x${"%04X".format(device.productId)})")
+        // Prioritize known IR Blaster dongles
+        val irDongle = deviceList.values.firstOrNull { d ->
+            d.vendorId == 0x045C || d.vendorId == 0x10C4 || d.vendorId == 0x1A86 || d.vendorId == 0x0403
+        } ?: deviceList.values.firstOrNull()
+
+        irDongle?.let { device ->
+            Log.d(TAG, "Auto-detected USB IR Device: ${device.deviceName} (VID: 0x${"%04X".format(device.vendorId)} PID: 0x${"%04X".format(device.productId)})")
             checkAndRequestPermission(device)
-            break // Handle first matching device
         }
     }
 
@@ -182,10 +202,10 @@ class MainActivity : ComponentActivity() {
         viewModel.onUsbDeviceDiscovered(device)
 
         if (usbManager.hasPermission(device)) {
-            Log.d(TAG, "Permission already granted for ${device.deviceName}. Connecting...")
+            Log.d(TAG, "Permission already granted for ${device.deviceName}. Auto-connecting...")
             viewModel.onUsbPermissionGranted(device)
         } else {
-            Log.d(TAG, "Requesting USB permission popup for ${device.deviceName} (VID: 0x${"%04X".format(device.vendorId)})")
+            Log.d(TAG, "Auto-requesting USB permission popup for ${device.deviceName} (VID: 0x${"%04X".format(device.vendorId)})")
             viewModel.onUsbPermissionRequested(device)
 
             val permissionIntent = PendingIntent.getBroadcast(

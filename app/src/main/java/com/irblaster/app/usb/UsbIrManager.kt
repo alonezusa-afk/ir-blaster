@@ -29,7 +29,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
- * Universal USB IR Hardware Manager with Dual-Layer Communication:
+ * Universal USB IR Hardware Manager with High-Throughput Reception Engine
+ * & Dual-Layer Communication:
  *
  * Layer A (Native Raw Bulk Endpoint):
  *   - Used for Getzget 7th Gen / Ocrustar / ZaZa / ElkSmart (VID: 0x045C) and Tiqiaa (0x10C4:0x8468).
@@ -44,7 +45,7 @@ class UsbIrManager(private val context: Context) {
         private const val TAG = "UsbIrManager"
         private const val BAUD_RATE = 115200
         private const val DATA_BITS = 8
-        private const val READ_TIMEOUT_MS = 1000
+        private const val READ_TIMEOUT_MS = 300
         private const val WRITE_TIMEOUT_MS = 1000
         private const val BUFFER_SIZE = 4096
 
@@ -84,15 +85,16 @@ class UsbIrManager(private val context: Context) {
         private set
 
     private var listenJob: Job? = null
+    private var keepAliveJob: Job? = null
 
     // Flows
-    private val _capturedSignals = MutableSharedFlow<IrSignal>(extraBufferCapacity = 10)
+    private val _capturedSignals = MutableSharedFlow<IrSignal>(extraBufferCapacity = 20)
     val capturedSignals: SharedFlow<IrSignal> = _capturedSignals.asSharedFlow()
 
     private val _liveWaterfallFlow = MutableSharedFlow<Float>(extraBufferCapacity = 100)
     val liveWaterfallFlow: SharedFlow<Float> = _liveWaterfallFlow.asSharedFlow()
 
-    private val _logFlow = MutableSharedFlow<String>(extraBufferCapacity = 100)
+    private val _logFlow = MutableSharedFlow<String>(extraBufferCapacity = 150)
     val logFlow: SharedFlow<String> = _logFlow.asSharedFlow()
 
     private fun log(message: String) {
@@ -275,7 +277,7 @@ class UsbIrManager(private val context: Context) {
             val responseSlice = responseBuffer.copyOfRange(0, readCount)
             log("RX Wake Response: [${responseSlice.toHex()}] ($readCount bytes)")
         } else {
-            log("RX Wake Response: No echo (device ready in blast mode)")
+            log("RX Wake Response: Ready")
         }
 
         delay(80)
@@ -297,7 +299,6 @@ class UsbIrManager(private val context: Context) {
 
     /**
      * Transmits an IR timing sequence to the blaster hardware.
-     * Uses 64-byte frame chunking to ensure reliable delivery across all USB OTG chipsets.
      */
     suspend fun transmit(signal: IrSignal): Result<Unit> = withContext(Dispatchers.IO) {
         if (!isConnected) {
@@ -315,7 +316,6 @@ class UsbIrManager(private val context: Context) {
             } else {
                 IrProtocolHelper.encodeStandard16BitPayload(signal.frequency, signal.timings)
             }
-            log("TX Payload (${payload.size} bytes): [${payload.toHex()}]")
 
             // Send in 64-byte USB chunks
             var offset = 0
@@ -331,19 +331,17 @@ class UsbIrManager(private val context: Context) {
                 }
                 offset += chunkSize
                 if (offset < payload.size) {
-                    delay(8)
+                    delay(6)
                 }
             }
 
             log("TX Complete: $totalWritten bytes delivered to IR hardware.")
-
-            // Feed the live waterfall animation
             _liveWaterfallFlow.tryEmit(1.0f)
 
-            // Read device echo / ACK (e.g. 0xFF 0xFF 0xFF 0xFF)
-            delay(50)
+            // Read device echo / ACK
+            delay(40)
             val ackBuf = ByteArray(256)
-            val ackLen = readRaw(ackBuf, 300)
+            val ackLen = readRaw(ackBuf, 200)
             if (ackLen > 0) {
                 log("RX Blaster Ack: [${ackBuf.copyOfRange(0, ackLen).toHex()}]")
             }
@@ -356,8 +354,8 @@ class UsbIrManager(private val context: Context) {
     }
 
     /**
-     * Starts continuous listening on USB IN endpoint.
-     * Dispatches hardware command [0xFE, 0xFE, 0xFE, 0xFE] to activate the receiver photodiode.
+     * Starts continuous high-frequency listening on USB IN endpoint.
+     * Activates photodiode hardware and runs non-blocking continuous capture stream.
      */
     fun startListening() {
         if (!isConnected || isListening) return
@@ -382,17 +380,29 @@ class UsbIrManager(private val context: Context) {
             val accumulator = ArrayList<Byte>(BUFFER_SIZE)
             var lastByteTime = 0L
 
+            // Background keep-alive to ensure photodiode power stays ON
+            keepAliveJob = launch {
+                while (isListening && isActive) {
+                    delay(1400)
+                    try {
+                        writeRaw(IrProtocolHelper.LEARN_START)
+                    } catch (e: Exception) {
+                        // ignore
+                    }
+                }
+            }
+
             while (isListening && isActive) {
                 try {
-                    val bytesRead = readRaw(readBuffer, 80)
+                    // Continuous blocking read with 250ms timeout
+                    val bytesRead = readRaw(readBuffer, READ_TIMEOUT_MS)
 
                     if (bytesRead > 0) {
                         lastByteTime = System.currentTimeMillis()
                         val slice = readBuffer.copyOfRange(0, bytesRead)
                         log("RX Stream ($bytesRead bytes): [${slice.toHex()}]")
 
-                        // Signal detected: notify flow
-                        _liveWaterfallFlow.emit(1.0f)
+                        _liveWaterfallFlow.tryEmit(1.0f)
 
                         for (b in slice) {
                             accumulator.add(b)
@@ -414,8 +424,8 @@ class UsbIrManager(private val context: Context) {
                             }
                         }
                     } else {
-                        // Inactivity flush check (if bytes arrived then paused for >120ms)
-                        if (accumulator.isNotEmpty() && (System.currentTimeMillis() - lastByteTime > 120)) {
+                        // Inactivity flush check (if bytes arrived then paused for >100ms)
+                        if (accumulator.isNotEmpty() && (System.currentTimeMillis() - lastByteTime > 100)) {
                             val accArray = accumulator.toByteArray()
                             val timings = IrProtocolHelper.decodeReceivedPayload(accArray, accArray.size)
                             if (timings.size >= 4) {
@@ -435,7 +445,6 @@ class UsbIrManager(private val context: Context) {
                         log("Listen read error: ${e.message}")
                     }
                 }
-                delay(15)
             }
 
             // Power down photodiode when loop finishes
@@ -444,7 +453,7 @@ class UsbIrManager(private val context: Context) {
                 log("TX Learn Stop: [${stopCmd.toHex()}]")
                 writeRaw(stopCmd)
             } catch (e: Exception) {
-                // Ignore during shutdown
+                // Ignore
             }
             log("Listen Mode Stopped.")
         }
@@ -453,6 +462,8 @@ class UsbIrManager(private val context: Context) {
     fun stopListening() {
         if (!isListening) return
         isListening = false
+        keepAliveJob?.cancel()
+        keepAliveJob = null
         listenJob?.cancel()
         listenJob = null
 
