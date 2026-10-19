@@ -1,0 +1,57 @@
+name: Build IR Blaster APK
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Check project files
+        run: |
+          echo "Repository root:"
+          ls -la
+          if [ ! -f ./gradlew ]; then
+            echo "::error::No Gradle wrapper (gradlew) found in the repository root."
+            exit 1
+          fi
+          chmod +x ./gradlew
+
+      - name: Build debug APK
+        run: ./gradlew assembleDebug --stacktrace
+
+      - name: Find APKs
+        id: find_apks
+        shell: bash
+        run: |
+          mapfile -t apks < <(find . -type f -path "*/build/outputs/apk/*/*.apk" -print)
+          if [ "${#apks[@]}" -eq 0 ]; then
+            echo "::error::Build finished but no APK was found. Check the Gradle build log."
+            exit 1
+          fi
+          printf 'Found APK files:\n'
+          printf '%s\n' "${apks[@]}"
+
+      - name: Upload APK artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: IR-Blaster-debug-APK
+          path: |
+            **/build/outputs/apk/**/*.apk
+          if-no-files-found: error
+          retention-days: 7
